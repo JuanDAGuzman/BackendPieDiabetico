@@ -1,21 +1,45 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const pacienteController = require('../controllers/pacienteController');
-const authMiddleware = require('../middlewares/auth');
+const pacienteController = require("../controllers/pacienteController");
+const {
+  authMiddleware,
+  esAdmin,
+  esDoctorVerificado,
+  accesoPaciente,
+} = require("../middlewares/auth");
 
 // Todas las rutas requieren autenticación
 router.use(authMiddleware);
 
-router.get('/', pacienteController.getAllPacientes);
-router.get('/:id', pacienteController.getPacienteById);
-router.post('/', pacienteController.createPaciente);
-router.put('/:id', pacienteController.updatePaciente);
-router.delete('/:id', pacienteController.deletePaciente);
+// Rutas para admin y doctores verificados
+router.get("/", esDoctorVerificado, pacienteController.getAllPacientes);
+router.post("/", authMiddleware, pacienteController.createPaciente); // Cualquiera puede registrar un paciente
 
-// Rutas adicionales para recuperar información relacionada
-router.get('/:id/consultas', pacienteController.getConsultasPaciente);
-router.get('/:id/citas', pacienteController.getCitasPaciente);
-router.get('/:id/evaluaciones-pie', pacienteController.getEvaluacionesPiePaciente);
-router.get('/:id/resultados-laboratorio', pacienteController.getResultadosLaboratorioPaciente);
+// Rutas con control de acceso por paciente
+router.get("/:id", accesoPaciente, pacienteController.getPacienteById);
+router.put("/:id", accesoPaciente, pacienteController.updatePaciente);
+router.delete("/:id", esAdmin, pacienteController.deletePaciente); // Solo admin puede eliminar
+
+// Rutas adicionales con control de acceso
+router.get(
+  "/:id_paciente/consultas",
+  accesoPaciente,
+  pacienteController.getConsultasPaciente
+);
+router.get(
+  "/:id_paciente/citas",
+  accesoPaciente,
+  pacienteController.getCitasPaciente
+);
+router.get(
+  "/:id_paciente/evaluaciones-pie",
+  accesoPaciente,
+  pacienteController.getEvaluacionesPiePaciente
+);
+router.get(
+  "/:id_paciente/resultados-laboratorio",
+  accesoPaciente,
+  pacienteController.getResultadosLaboratorioPaciente
+);
 
 module.exports = router;

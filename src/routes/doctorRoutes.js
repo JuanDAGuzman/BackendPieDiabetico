@@ -6,9 +6,14 @@ const { authMiddleware, esAdmin, esDoctorVerificado } = require('../middlewares/
 // Todas las rutas requieren autenticación
 router.use(authMiddleware);
 
+
+router.post('/:id_doctor/pacientes', authMiddleware, esAdmin, doctorPacienteController.asignarPaciente);
+router.delete('/:id_doctor/pacientes/:id_paciente', authMiddleware, esAdmin, doctorPacienteController.desasignarPaciente);
+router.get('/:id_doctor/pacientes', authMiddleware, esDoctorVerificado, doctorPacienteController.getPacientesByDoctor);
+
 // Rutas para crear y verificar doctores
 router.post('/', authMiddleware, doctorController.createDoctor); // Cualquiera puede solicitar ser doctor
-router.put('/:id/verificar', esAdmin, doctorController.verificarDoctor); // Solo admin puede verificar
+router.put('/:id/verificar', authMiddleware, esAdmin, doctorController.verificarDoctor);
 
 // Rutas para consultar doctores
 router.get('/', authMiddleware, doctorController.getAllDoctores); // Todos pueden ver doctores verificados

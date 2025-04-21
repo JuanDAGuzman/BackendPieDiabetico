@@ -36,6 +36,39 @@ exports.login = async (req, res, next) => {
     // Obtener permisos del rol
     const permisos = await Rol.getPermisos(usuario.id_rol);
 
+    // Datos adicionales para incluir en el token
+    let datosAdicionales = {};
+
+    // Si es doctor, incluir info sobre verificación
+    if (usuario.id_rol === 2) {
+      const resultDoctor = await db.query(
+        "SELECT id_doctor, estado_verificacion FROM doctores WHERE id_usuario = $1",
+        [usuario.id_usuario]
+      );
+
+      if (resultDoctor.rows.length > 0) {
+        datosAdicionales = {
+          id_doctor: resultDoctor.rows[0].id_doctor,
+          doctor_verificado:
+            resultDoctor.rows[0].estado_verificacion === "Aprobado",
+        };
+      }
+    }
+
+    // Si es paciente, incluir su id_paciente
+    if (usuario.id_rol === 3) {
+      const resultPaciente = await db.query(
+        "SELECT id_paciente FROM pacientes WHERE id_usuario = $1",
+        [usuario.id_usuario]
+      );
+
+      if (resultPaciente.rows.length > 0) {
+        datosAdicionales = {
+          id_paciente: resultPaciente.rows[0].id_paciente,
+        };
+      }
+    }
+
     // Generar token JWT
     const token = jwt.sign(
       {
@@ -43,6 +76,7 @@ exports.login = async (req, res, next) => {
         email: usuario.email,
         rol: usuario.id_rol,
         permisos: permisos.map((p) => p.nombre),
+        ...datosAdicionales,
       },
       jwtSecret,
       { expiresIn: jwtExpiresIn }
@@ -57,6 +91,7 @@ exports.login = async (req, res, next) => {
         apellido: usuario.apellido,
         email: usuario.email,
         rol: usuario.id_rol,
+        ...datosAdicionales,
       },
     });
   } catch (error) {

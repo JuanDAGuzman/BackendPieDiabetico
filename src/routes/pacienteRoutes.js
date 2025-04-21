@@ -11,6 +11,10 @@ const {
 // Todas las rutas requieren autenticación
 router.use(authMiddleware);
 
+
+router.get('/:id_paciente/doctores', authMiddleware, accesoPaciente, doctorPacienteController.getDoctoresByPaciente);
+
+
 // Rutas para admin y doctores verificados
 router.get("/", esDoctorVerificado, pacienteController.getAllPacientes);
 router.post("/", authMiddleware, pacienteController.createPaciente); // Cualquiera puede registrar un paciente

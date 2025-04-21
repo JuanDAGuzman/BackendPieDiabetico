@@ -44,13 +44,6 @@ exports.verificarDoctor = async (req, res, next) => {
       return res.status(500).json({ message: "Error al verificar el doctor" });
     }
 
-    // Si fue rechazado, actualizar el rol del usuario a paciente (rol=3)
-    if (estado === "Rechazado") {
-      await db.query("UPDATE usuarios SET id_rol = 3 WHERE id_usuario = $1", [
-        doctor.id_usuario,
-      ]);
-    }
-
     res.status(200).json({
       message: `Doctor ${
         estado === "Aprobado" ? "aprobado" : "rechazado"
@@ -61,7 +54,6 @@ exports.verificarDoctor = async (req, res, next) => {
     next(error);
   }
 };
-
 exports.getDoctorById = async (req, res, next) => {
   try {
     const id = req.params.id;

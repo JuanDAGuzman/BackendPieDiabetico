@@ -25,7 +25,9 @@ const Doctor = {
 
   create: async (doctor) => {
     const query = `
-      INSERT INTO doctores(id_usuario, especialidad, numero_licencia, consulta_duracion_minutos, biografia, estado_verificacion)
+      INSERT INTO doctores(
+        id_usuario, especialidad, numero_licencia, consulta_duracion_minutos, 
+        biografia, estado_verificacion)
       VALUES($1, $2, $3, $4, $5, $6)
       RETURNING *
     `;
@@ -36,7 +38,7 @@ const Doctor = {
       doctor.numero_licencia,
       doctor.consulta_duracion_minutos || 30,
       doctor.biografia,
-      "Pendiente", // Por defecto, siempre pendiente
+      "Pendiente", // Por defecto, todos los doctores empiezan como pendientes
     ];
 
     const result = await db.query(query, values);
@@ -58,11 +60,11 @@ const Doctor = {
   // Modificar findAll para solo devolver doctores verificados (a menos que sea admin)
   findAll: async (incluirPendientes = false) => {
     let query = `
-    SELECT d.*, u.nombre, u.apellido, u.email, u.telefono, u.estado
-    FROM doctores d
-    JOIN usuarios u ON d.id_usuario = u.id_usuario
-    WHERE u.estado = 'Activo'
-  `;
+      SELECT d.*, u.nombre, u.apellido, u.email, u.telefono, u.estado
+      FROM doctores d
+      JOIN usuarios u ON d.id_usuario = u.id_usuario
+      WHERE u.estado = 'Activo'
+    `;
 
     if (!incluirPendientes) {
       query += ` AND d.estado_verificacion = 'Aprobado'`;
@@ -72,29 +74,6 @@ const Doctor = {
 
     const result = await db.query(query);
     return result.rows;
-  },
-
-  update: async (id, doctor) => {
-    const query = `
-      UPDATE doctores
-      SET especialidad = $1,
-          numero_licencia = $2,
-          consulta_duracion_minutos = $3,
-          biografia = $4
-      WHERE id_doctor = $5
-      RETURNING *
-    `;
-
-    const values = [
-      doctor.especialidad,
-      doctor.numero_licencia,
-      doctor.consulta_duracion_minutos,
-      doctor.biografia,
-      id,
-    ];
-
-    const result = await db.query(query, values);
-    return result.rows[0];
   },
 
   delete: async (id) => {

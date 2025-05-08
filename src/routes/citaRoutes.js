@@ -1,18 +1,24 @@
+// src/routes/citaRoutes.js
 const express = require('express');
 const router = express.Router();
 const citaController = require('../controllers/citaController');
-const authMiddleware = require('../middlewares/auth');
+const { authMiddleware, esAdmin, esDoctorVerificado, accesoPaciente } = require('../middlewares/auth');
 
-// Todas las rutas requieren autenticación
+// Aplicar middleware de autenticación a todas las rutas
 router.use(authMiddleware);
 
+// Rutas generales (filtran resultados según rol en el controlador)
 router.get('/', citaController.getAllCitas);
 router.get('/proximas', citaController.getProximasCitas);
+
+// Rutas específicas con control de acceso adicional
 router.get('/doctor/:id_doctor', citaController.getCitasByDoctor);
-router.get('/paciente/:id_paciente', citaController.getCitasByPaciente);
+router.get('/paciente/:id_paciente', accesoPaciente, citaController.getCitasByPaciente);
 router.get('/:id', citaController.getCitaById);
-router.post('/', citaController.createCita);
-router.put('/:id', citaController.updateCita);
-router.delete('/:id', citaController.deleteCita);
+
+// Rutas para crear y modificar citas (solo doctores y admin)
+router.post('/', esDoctorVerificado, citaController.createCita);
+router.put('/:id', esDoctorVerificado, citaController.updateCita);
+router.delete('/:id', esDoctorVerificado, citaController.deleteCita);
 
 module.exports = router;

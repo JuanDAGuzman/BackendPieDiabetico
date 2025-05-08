@@ -8,7 +8,11 @@ const citaRoutes = require('./citaRoutes');
 const centroMedicoRoutes = require('./centroMedicoRoutes');
 const consultaRoutes = require('./consultaRoutes');
 const evaluacionPieRoutes = require('./evaluacionPieRoutes');
-const tratamientoRoutes = require('./tratamientoRoutes'); 
+const tratamientoRoutes = require('./tratamientoRoutes');
+const resultadoLaboratorioRoutes = require('./resultadoLaboratorioRoutes'); 
+const reporteRoutes = require('./reporteRoutes');
+const notificacionRoutes = require('./notificacionRoutes');
+
 
 // Ruta de prueba
 router.get('/health', (req, res) => {
@@ -18,7 +22,14 @@ router.get('/health', (req, res) => {
 // Rutas de autenticación
 router.use('/auth', authRoutes);
 
+
 // Rutas de recursos
+
+// ...
+
+// Agregar en la sección de rutas
+router.use('/reportes', reporteRoutes);
+router.use('/notificaciones', notificacionRoutes);
 router.use('/usuarios', usuarioRoutes);
 router.use('/pacientes', pacienteRoutes);
 router.use('/doctores', doctorRoutes);
@@ -27,5 +38,7 @@ router.use('/centros', centroMedicoRoutes);
 router.use('/consultas', consultaRoutes);
 router.use('/evaluaciones-pie', evaluacionPieRoutes);
 router.use('/tratamientos', tratamientoRoutes); 
+router.use('/resultados', resultadoLaboratorioRoutes);
+router.use('/notificaciones', notificacionRoutes);
 
 module.exports = router;

@@ -1,3 +1,4 @@
+// src/routes/doctorRoutes.js
 const express = require('express');
 const router = express.Router();
 const doctorController = require('../controllers/doctorController');
@@ -6,26 +7,34 @@ const { authMiddleware, esAdmin, esDoctorVerificado } = require('../middlewares/
 // Todas las rutas requieren autenticación
 router.use(authMiddleware);
 
+// Ruta para completar perfil de doctor (usuario existente)
+router.post('/perfil', authMiddleware, doctorController.completarPerfilDoctor);
 
-router.post('/:id_doctor/pacientes', authMiddleware, esAdmin, doctorPacienteController.asignarPaciente);
-router.delete('/:id_doctor/pacientes/:id_paciente', authMiddleware, esAdmin, doctorPacienteController.desasignarPaciente);
-router.get('/:id_doctor/pacientes', authMiddleware, esDoctorVerificado, doctorPacienteController.getPacientesByDoctor);
+// Cualquiera puede ver la lista de doctores verificados
+router.get('/', authMiddleware, doctorController.getAllDoctores);
 
-// Rutas para crear y verificar doctores
-router.post('/', authMiddleware, doctorController.createDoctor); // Cualquiera puede solicitar ser doctor
-router.put('/:id/verificar', authMiddleware, esAdmin, doctorController.verificarDoctor);
-
-// Rutas para consultar doctores
-router.get('/', authMiddleware, doctorController.getAllDoctores); // Todos pueden ver doctores verificados
+// Cualquiera puede ver los detalles de un doctor verificado
 router.get('/:id', authMiddleware, doctorController.getDoctorById);
 
-// Rutas para gestionar doctores
-router.put('/:id', esAdmin, doctorController.updateDoctor); // Solo admin puede actualizar
-router.delete('/:id', esAdmin, doctorController.deleteDoctor); // Solo admin puede eliminar
+// Cualquiera puede solicitar ser doctor
+router.post('/', authMiddleware, doctorController.createDoctor);
 
-// Rutas adicionales
+// Solo administradores pueden verificar doctores
+router.put('/:id/verificar', esAdmin, doctorController.verificarDoctor);
+
+// Solo el propio doctor o administradores pueden actualizar un doctor
+router.put('/:id', authMiddleware, doctorController.updateDoctor);
+
+// Solo administradores pueden eliminar doctores
+router.delete('/:id', esAdmin, doctorController.deleteDoctor);
+
+// Cualquiera puede ver los centros donde trabaja un doctor
 router.get('/:id/centros', authMiddleware, doctorController.getCentrosDoctor);
+
+// Cualquiera puede ver los horarios de un doctor
 router.get('/:id/horarios', authMiddleware, doctorController.getHorariosDoctor);
+
+// Solo el propio doctor o administradores pueden ver los pacientes del doctor
 router.get('/:id/pacientes', esDoctorVerificado, doctorController.getPacientesDoctor);
 
 module.exports = router;

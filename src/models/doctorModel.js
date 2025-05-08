@@ -1,16 +1,40 @@
 const db = require("../config/database");
 
 const Doctor = {
-  findAll: async () => {
-    const query = `
-      SELECT d.*, u.nombre, u.apellido, u.email, u.telefono, u.estado
-      FROM doctores d
-      JOIN usuarios u ON d.id_usuario = u.id_usuario
-      WHERE u.estado = 'Activo'
-    `;
-    const result = await db.query(query);
-    return result.rows;
-  },
+findAll: async () => {
+  try {
+    // Primero intentar con filtro de estado_verificacion
+    try {
+      const query = `
+        SELECT d.*, u.nombre, u.apellido, u.email, u.telefono, u.estado
+        FROM doctores d
+        JOIN usuarios u ON d.id_usuario = u.id_usuario
+        WHERE u.estado = 'Activo'
+        ORDER BY u.apellido, u.nombre
+      `;
+      
+      const result = await db.query(query);
+      return result.rows;
+    } catch (error) {
+      console.error("Error al consultar doctores con filtro:", error);
+      
+      // Si falla, intentar sin filtro de estado_verificacion (por si la columna no existe)
+      const fallbackQuery = `
+        SELECT d.*, u.nombre, u.apellido, u.email, u.telefono, u.estado
+        FROM doctores d
+        JOIN usuarios u ON d.id_usuario = u.id_usuario
+        WHERE u.estado = 'Activo'
+        ORDER BY u.apellido, u.nombre
+      `;
+      
+      const fallbackResult = await db.query(fallbackQuery);
+      return fallbackResult.rows;
+    }
+  } catch (error) {
+    console.error("Error general en findAll de doctores:", error);
+    throw error;
+  }
+},
 
   findById: async (id) => {
     const query = `

@@ -20,6 +20,14 @@ exports.getAllUsuarios = async (req, res, next) => {
 exports.getUsuarioById = async (req, res, next) => {
   try {
     const id = req.params.id;
+
+    // Solo permitir acceso si es administrador o el propio usuario
+    if (req.userData.rol !== 1 && req.userData.id !== parseInt(id)) {
+      return res
+        .status(403)
+        .json({ message: "No tienes permisos para ver este usuario" });
+    }
+
     const usuario = await Usuario.findById(id);
 
     if (!usuario) {
@@ -90,13 +98,28 @@ exports.createUsuario = async (req, res, next) => {
 exports.updateUsuario = async (req, res, next) => {
   try {
     const id = req.params.id;
+
+    // Solo permitir actualización si es administrador o el propio usuario
+    if (req.userData.rol !== 1 && req.userData.id !== parseInt(id)) {
+      return res
+        .status(403)
+        .json({ message: "No tienes permisos para actualizar este usuario" });
+    }
+
     const usuario = await Usuario.findById(id);
 
     if (!usuario) {
       return res.status(404).json({ message: "Usuario no encontrado" });
     }
 
-    const updatedUser = await Usuario.update(id, req.body);
+    // Si no es administrador, restringir los campos que puede actualizar
+    let datosActualizados = req.body;
+    if (req.userData.rol !== 1) {
+      const { nombre, apellido, telefono, direccion } = req.body;
+      datosActualizados = { nombre, apellido, telefono, direccion };
+    }
+
+    const updatedUser = await Usuario.update(id, datosActualizados);
 
     if (!updatedUser) {
       return res
@@ -107,7 +130,6 @@ exports.updateUsuario = async (req, res, next) => {
     // Ocultar contraseña
     delete updatedUser.password;
 
-    // continuación de src/controllers/usuarioController.js
     res.status(200).json({
       message: "Usuario actualizado exitosamente",
       data: updatedUser,

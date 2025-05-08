@@ -5,6 +5,7 @@ const morgan = require('morgan');
 const routes = require('./routes');
 const errorHandler = require('./middlewares/errorHandler');
 const { port } = require('./config/config');
+const path = require('path');
 
 const app = express();
 
@@ -30,5 +31,8 @@ app.use((req, res) => {
 app.listen(port, () => {
   console.log(`Servidor corriendo en el puerto ${port}`);
 });
+
+//Archivos estaticos
+app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
 
 module.exports = app;

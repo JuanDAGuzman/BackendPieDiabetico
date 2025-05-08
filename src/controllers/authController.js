@@ -36,10 +36,10 @@ exports.login = async (req, res, next) => {
     // Obtener permisos del rol
     const permisos = await Rol.getPermisos(usuario.id_rol);
 
-    // Datos adicionales para incluir en el token
+    // Datos adicionales según el rol
     let datosAdicionales = {};
 
-    // Si es doctor, incluir info sobre verificación
+    // Si es doctor, incluir su id_doctor
     if (usuario.id_rol === 2) {
       const resultDoctor = await db.query(
         "SELECT id_doctor, estado_verificacion FROM doctores WHERE id_usuario = $1",
@@ -112,30 +112,29 @@ exports.register = async (req, res, next) => {
       genero,
       numero_identificacion,
       tipo_identificacion,
+      rol, // Nuevo parámetro opcional para permitir especificar rol (principalmente para admin)
     } = req.body;
 
     // Validar que el email no exista ya
     const existingUser = await Usuario.findByEmail(email);
     if (existingUser) {
-      return res.status(400).json({ message: "El email ya está registrado" });
+      return res.status(400).json({
+        message:
+          "El email ya está registrado. Si deseas completar tu perfil como doctor o paciente, usa los endpoints correspondientes.",
+      });
     }
 
-    // Validar que el número de identificación no exista ya
-    if (numero_identificacion) {
-      const existingIdUser = await db.query(
-        "SELECT * FROM usuarios WHERE numero_identificacion = $1",
-        [numero_identificacion]
-      );
-      if (existingIdUser.rows.length > 0) {
-        return res
-          .status(400)
-          .json({ message: "El número de identificación ya está registrado" });
-      }
+    // Determinar el rol - default: paciente (3)
+    // Solo permitir rol admin (1) si hay una verificación especial (puedes implementarla después)
+    let id_rol = 3; // Default: paciente
+    if (rol === 1 && req.headers["admin-secret"] === process.env.ADMIN_SECRET) {
+      id_rol = 1; // Permitir crear admin solo con un secreto especial
+    } else if (rol === 2) {
+      id_rol = 2; // Permitir crear doctor (pero necesitará verificación)
     }
 
-    // Por defecto, asignar rol de paciente (id_rol=3)
     const nuevoUsuario = await Usuario.create({
-      id_rol: 3, // Rol de paciente
+      id_rol,
       nombre,
       apellido,
       email,
@@ -152,12 +151,25 @@ exports.register = async (req, res, next) => {
       return res.status(500).json({ message: "Error al crear el usuario" });
     }
 
+    // Mensaje adicional según el rol
+    let rolMensaje = "";
+    if (id_rol === 1) {
+      rolMensaje = "con rol de Administrador";
+    } else if (id_rol === 2) {
+      rolMensaje =
+        "con rol de Doctor. Para completar su perfil profesional, use el endpoint /api/doctores";
+    } else {
+      rolMensaje =
+        "con rol de Paciente. Para completar su perfil médico, use el endpoint /api/pacientes";
+    }
+
     res.status(201).json({
-      message: "Usuario registrado exitosamente",
+      message: `Usuario registrado exitosamente ${rolMensaje}`,
       user: {
         id: nuevoUsuario.id_usuario,
         nombre: nuevoUsuario.nombre,
         email: nuevoUsuario.email,
+        rol: id_rol,
       },
     });
   } catch (error) {

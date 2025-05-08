@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const centroMedicoController = require('../controllers/centroMedicoController');
-const authMiddleware = require('../middlewares/auth');
+const { authMiddleware } = require('../middlewares/auth'); 
 
 // Todas las rutas requieren autenticación
 router.use(authMiddleware);

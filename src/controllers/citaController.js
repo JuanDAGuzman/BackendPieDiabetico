@@ -1,14 +1,69 @@
 const Cita = require("../models/citaModel");
+const db = require("../config/database");
 
 exports.getAllCitas = async (req, res, next) => {
   try {
-    const citas = await Cita.findAll();
+    // Verificar que userData existe
+    if (!req.userData) {
+      return res.status(401).json({ message: "Autenticación requerida" });
+    }
+
+    let citas = [];
+
+    // Si es admin, obtiene todas las citas
+    if (req.userData.rol === 1) {
+      citas = await Cita.findAll();
+    }
+    // Si es doctor, solo obtiene sus citas
+    else if (req.userData.rol === 2) {
+      // Intentar usar id_doctor del token
+      if (req.userData.id_doctor) {
+        citas = await Cita.getCitasByDoctor(req.userData.id_doctor);
+      } else {
+        // Si no está en el token, buscarlo en la base de datos
+        const resultDoctor = await db.query(
+          "SELECT id_doctor FROM doctores WHERE id_usuario = $1",
+          [req.userData.id]
+        );
+
+        if (resultDoctor.rows.length > 0) {
+          const id_doctor = resultDoctor.rows[0].id_doctor;
+          citas = await Cita.getCitasByDoctor(id_doctor);
+        }
+      }
+    }
+    // Si es paciente, solo obtiene sus citas
+    else if (req.userData.rol === 3) {
+      // Intentar usar id_paciente del token
+      if (req.userData.id_paciente) {
+        citas = await Cita.getCitasByPaciente(req.userData.id_paciente);
+      } else {
+        // Si no está en el token, buscarlo en la base de datos
+        const resultPaciente = await db.query(
+          "SELECT id_paciente FROM pacientes WHERE id_usuario = $1",
+          [req.userData.id]
+        );
+
+        if (resultPaciente.rows.length > 0) {
+          const id_paciente = resultPaciente.rows[0].id_paciente;
+          citas = await Cita.getCitasByPaciente(id_paciente);
+        } else {
+          return res.status(404).json({
+            message:
+              "No se encontró un perfil de paciente asociado a este usuario",
+          });
+        }
+      }
+    } else {
+      return res.status(403).json({ message: "Rol de usuario no autorizado" });
+    }
+
     res.status(200).json({ data: citas });
   } catch (error) {
+    console.error("Error en getAllCitas:", error);
     next(error);
   }
 };
-
 exports.getCitaById = async (req, res, next) => {
   try {
     const id = req.params.id;
@@ -18,7 +73,47 @@ exports.getCitaById = async (req, res, next) => {
       return res.status(404).json({ message: "Cita no encontrada" });
     }
 
-    res.status(200).json({ data: cita });
+    // Si es admin, permitir acceso
+    if (req.userData.rol === 1) {
+      return res.status(200).json({ data: cita });
+    }
+
+    // Si es doctor, verificar si la cita es suya
+    if (req.userData.rol === 2) {
+      // Obtener id_doctor del usuario
+      const resultDoctor = await db.query(
+        "SELECT id_doctor FROM doctores WHERE id_usuario = $1",
+        [req.userData.id]
+      );
+
+      if (
+        resultDoctor.rows.length > 0 &&
+        resultDoctor.rows[0].id_doctor === cita.id_doctor
+      ) {
+        return res.status(200).json({ data: cita });
+      }
+    }
+
+    // Si es paciente, verificar si la cita es suya
+    if (req.userData.rol === 3) {
+      // Obtener id_paciente del usuario
+      const resultPaciente = await db.query(
+        "SELECT id_paciente FROM pacientes WHERE id_usuario = $1",
+        [req.userData.id]
+      );
+
+      if (
+        resultPaciente.rows.length > 0 &&
+        resultPaciente.rows[0].id_paciente === cita.id_paciente
+      ) {
+        return res.status(200).json({ data: cita });
+      }
+    }
+
+    // Si no tiene permisos
+    return res
+      .status(403)
+      .json({ message: "No tienes permisos para acceder a esta cita" });
   } catch (error) {
     next(error);
   }
@@ -48,11 +143,9 @@ exports.createCita = async (req, res, next) => {
     );
 
     if (!disponible) {
-      return res
-        .status(400)
-        .json({
-          message: "El doctor no está disponible en el horario seleccionado",
-        });
+      return res.status(400).json({
+        message: "El doctor no está disponible en el horario seleccionado",
+      });
     }
 
     const nuevaCita = await Cita.create({
@@ -123,11 +216,9 @@ exports.updateCita = async (req, res, next) => {
       );
 
       if (!disponible) {
-        return res
-          .status(400)
-          .json({
-            message: "El doctor no está disponible en el horario seleccionado",
-          });
+        return res.status(400).json({
+          message: "El doctor no está disponible en el horario seleccionado",
+        });
       }
     }
 
@@ -204,9 +295,71 @@ exports.getCitasByDoctor = async (req, res, next) => {
 
 exports.getCitasByPaciente = async (req, res, next) => {
   try {
-    const id_paciente = req.params.id_paciente;
-    const citas = await Cita.getCitasByPaciente(id_paciente);
-    res.status(200).json({ data: citas });
+    const id_paciente = parseInt(req.params.id_paciente);
+
+    // Verificar permisos
+    // Si es admin, puede ver citas de cualquier paciente
+    if (req.userData.rol === 1) {
+      const citas = await Cita.getCitasByPaciente(id_paciente);
+      return res.status(200).json({ data: citas });
+    }
+
+    // Si es doctor, verificar si el paciente está asignado a él
+    if (req.userData.rol === 2) {
+      // Obtener id_doctor del usuario
+      const resultDoctor = await db.query(
+        "SELECT id_doctor FROM doctores WHERE id_usuario = $1",
+        [req.userData.id]
+      );
+
+      if (resultDoctor.rows.length > 0) {
+        const id_doctor = resultDoctor.rows[0].id_doctor;
+
+        // Verificar si el paciente está asignado a este doctor
+        const resultPaciente = await db.query(
+          "SELECT * FROM pacientes WHERE id_paciente = $1 AND id_doctor_principal = $2",
+          [id_paciente, id_doctor]
+        );
+
+        // También verificar en tabla doctor_paciente si existe
+        const resultDoctorPaciente = await db
+          .query(
+            "SELECT * FROM doctor_paciente WHERE id_doctor = $1 AND id_paciente = $2",
+            [id_doctor, id_paciente]
+          )
+          .catch(() => ({ rows: [] })); // Si la tabla no existe, tratar como vacía
+
+        if (
+          resultPaciente.rows.length > 0 ||
+          resultDoctorPaciente.rows.length > 0
+        ) {
+          const citas = await Cita.getCitasByPaciente(id_paciente);
+          return res.status(200).json({ data: citas });
+        }
+      }
+    }
+
+    // Si es el propio paciente
+    if (req.userData.rol === 3) {
+      // Obtener id_paciente del usuario
+      const resultPaciente = await db.query(
+        "SELECT id_paciente FROM pacientes WHERE id_usuario = $1",
+        [req.userData.id]
+      );
+
+      if (
+        resultPaciente.rows.length > 0 &&
+        resultPaciente.rows[0].id_paciente === id_paciente
+      ) {
+        const citas = await Cita.getCitasByPaciente(id_paciente);
+        return res.status(200).json({ data: citas });
+      }
+    }
+
+    // Si no tiene permisos
+    return res
+      .status(403)
+      .json({ message: "No tienes permisos para acceder a estas citas" });
   } catch (error) {
     next(error);
   }

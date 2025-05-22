@@ -28,4 +28,19 @@ router.post("/", esDoctorVerificado, consultaController.createConsulta);
 router.put("/:id", consultaController.updateConsulta);
 router.delete("/:id", consultaController.deleteConsulta);
 
+// Obtener enlace de videollamada de una consulta específica
+router.get("/:id/videollamada", consultaController.getEnlaceVideollamada);
+
+// Actualizar estado de videollamada
+router.patch(
+  "/:id/videollamada/estado",
+  consultaController.actualizarEstadoVideollamada
+);
+
+// Regenerar enlace de videollamada (opcional)
+router.put(
+  "/:id/videollamada/regenerar",
+  consultaController.regenerarEnlaceVideollamada
+);
+
 module.exports = router;
